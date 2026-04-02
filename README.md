@@ -1,6 +1,85 @@
 # Linux System Monitor in Python
 
-This folder is now a small crash course plus starter project for learning system design through a practical example:
+This project is a Python-based terminal system monitor built to study practical system design through a real example.
+
+It can be used in two ways:
+
+- as a runnable Linux-style system monitor project
+- as a crash-course study project for software engineering interviews
+
+## Features
+
+- real-time CPU, memory, disk, and network monitoring
+- per-core CPU visibility
+- rate-based network throughput
+- top process reporting
+- threshold-based alerts
+- recent trend sparklines in the terminal
+- optional GPU collection through `nvidia-smi`
+- configurable CLI flags for refresh and alert thresholds
+- lower-overhead sampling with cached slow collectors
+
+## Run
+
+Install dependencies:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+Run the monitor:
+
+```bash
+python3 main.py
+```
+
+Run with custom settings:
+
+```bash
+python3 main.py \
+  --interval 1 \
+  --history-size 120 \
+  --cpu-threshold 80 \
+  --memory-threshold 80 \
+  --disk-threshold 85 \
+  --process-refresh-interval 3 \
+  --gpu-refresh-interval 5
+```
+
+## Test
+
+Using the `Makefile`:
+
+```bash
+make test
+make smoke
+make run
+make compile
+```
+
+Direct commands:
+
+```bash
+python3 -m unittest discover -s tests -v
+python3 -m compileall .
+```
+
+## Design Summary
+
+The monitor is structured in layers:
+
+- collectors gather machine data
+- sampler builds time-based snapshots and rate calculations
+- alerts evaluate thresholds
+- UI renders a terminal dashboard
+- `main.py` wires configuration and runtime behavior together
+
+The sampler treats collectors by cost:
+
+- fast collectors refresh every sample
+- slow collectors such as process and GPU queries are cached and refreshed less often
+
+This folder also includes a small crash course for learning system design through the same example:
 
 - Build a Linux system monitor
 - Explain the design clearly in an interview

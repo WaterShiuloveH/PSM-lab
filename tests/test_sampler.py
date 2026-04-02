@@ -145,3 +145,55 @@ class SystemSamplerTest(TestCase):
         self.assertEqual(first_snapshot.net_recv_rate, 0.0)
         self.assertEqual(second_snapshot.net_sent_rate, 30.0)
         self.assertEqual(second_snapshot.net_recv_rate, 60.0)
+
+    @patch(
+        "monitor.sampler.collect_gpu_info",
+        return_value=[
+            GpuInfo(
+                name="GPU 0",
+                utilization_percent=10.0,
+                memory_used_mb=100,
+                memory_total_mb=1000,
+            )
+        ],
+    )
+    @patch(
+        "monitor.sampler.collect_top_processes",
+        return_value=[ProcessInfo(pid=1, name="python", cpu_percent=1.0, memory_percent=1.0)],
+    )
+    @patch("monitor.sampler.collect_network_counters", return_value=(1, 2))
+    @patch("monitor.sampler.collect_disk_percent", return_value=3.0)
+    @patch("monitor.sampler.collect_memory_percent", return_value=4.0)
+    @patch("monitor.sampler.collect_per_cpu_percent", return_value=[6.0, 7.0])
+    @patch("monitor.sampler.collect_cpu_percent", return_value=5.0)
+    @patch("monitor.sampler.datetime")
+    def test_sample_reuses_cached_slow_collectors_between_refresh_intervals(
+        self,
+        mock_datetime,
+        mock_cpu_percent,
+        mock_per_cpu_percent,
+        mock_memory_percent,
+        mock_disk_percent,
+        mock_network_counters,
+        mock_collect_top_processes,
+        mock_collect_gpu_info,
+    ) -> None:
+        mock_datetime.now.side_effect = [
+            datetime(2026, 4, 2, 17, 0, 0),
+            datetime(2026, 4, 2, 17, 0, 1),
+            datetime(2026, 4, 2, 17, 0, 4),
+            datetime(2026, 4, 2, 17, 0, 6),
+        ]
+
+        sampler = SystemSampler(
+            history_size=2,
+            process_refresh_interval=3.0,
+            gpu_refresh_interval=5.0,
+        )
+        sampler.sample()
+        sampler.sample()
+        sampler.sample()
+        sampler.sample()
+
+        self.assertEqual(mock_collect_top_processes.call_count, 2)
+        self.assertEqual(mock_collect_gpu_info.call_count, 2)

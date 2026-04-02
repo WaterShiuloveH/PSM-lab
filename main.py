@@ -18,6 +18,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Linux system monitor in Python")
     parser.add_argument("--interval", type=float, default=1.0, help="Refresh interval in seconds")
     parser.add_argument("--history-size", type=int, default=60, help="Number of snapshots to keep")
+    parser.add_argument(
+        "--process-refresh-interval",
+        type=float,
+        default=3.0,
+        help="Refresh interval for top-process collection in seconds",
+    )
+    parser.add_argument(
+        "--gpu-refresh-interval",
+        type=float,
+        default=5.0,
+        help="Refresh interval for GPU collection in seconds",
+    )
     parser.add_argument("--cpu-threshold", type=float, default=90.0, help="CPU alert threshold")
     parser.add_argument("--memory-threshold", type=float, default=85.0, help="Memory alert threshold")
     parser.add_argument("--disk-threshold", type=float, default=90.0, help="Disk alert threshold")
@@ -33,6 +45,8 @@ def main(argv: list[str] | None = None) -> None:
             memory_threshold=args.memory_threshold,
             disk_threshold=args.disk_threshold,
         ),
+        process_refresh_interval=args.process_refresh_interval,
+        gpu_refresh_interval=args.gpu_refresh_interval,
     )
 
     # Prime process CPU percentages so later samples become meaningful.
