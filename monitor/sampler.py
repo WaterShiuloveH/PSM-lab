@@ -42,6 +42,10 @@ class SystemSampler:
         gpu_info = self._get_cached_gpu_info(timestamp)
         top_processes = self._get_cached_top_processes(timestamp)
         sent_rate, recv_rate = self._compute_network_rates(timestamp, sent, recv)
+        sent_rate_smoothed, recv_rate_smoothed = self._compute_smoothed_network_rates(
+            sent_rate,
+            recv_rate,
+        )
         snapshot = SystemSnapshot(
             timestamp=timestamp,
             cpu_percent=collect_cpu_percent(),
@@ -52,6 +56,8 @@ class SystemSampler:
             net_bytes_recv=recv,
             net_sent_rate=sent_rate,
             net_recv_rate=recv_rate,
+            net_sent_rate_smoothed=sent_rate_smoothed,
+            net_recv_rate_smoothed=recv_rate_smoothed,
             alerts=[],
             gpu_info=gpu_info,
             top_processes=top_processes,
@@ -83,6 +89,17 @@ class SystemSampler:
         self._previous_net_sent = sent
         self._previous_net_recv = recv
         return sent_rate, recv_rate
+
+    def _compute_smoothed_network_rates(
+        self,
+        sent_rate: float,
+        recv_rate: float,
+        points: int = 3,
+    ) -> tuple[float, float]:
+        recent = list(self.history)[-(points - 1) :] if points > 1 else []
+        sent_values = [snapshot.net_sent_rate for snapshot in recent] + [sent_rate]
+        recv_values = [snapshot.net_recv_rate for snapshot in recent] + [recv_rate]
+        return self._average(sent_values), self._average(recv_values)
 
     def _get_cached_top_processes(self, timestamp: datetime):
         if self._should_refresh(
@@ -119,8 +136,12 @@ class SystemSampler:
         return {
             "cpu": self._trend_string([snapshot.cpu_percent for snapshot in recent]),
             "memory": self._trend_string([snapshot.memory_percent for snapshot in recent]),
-            "network_up": self._trend_string([snapshot.net_sent_rate for snapshot in recent]),
-            "network_down": self._trend_string([snapshot.net_recv_rate for snapshot in recent]),
+            "network_up": self._trend_string(
+                [snapshot.net_sent_rate_smoothed for snapshot in recent]
+            ),
+            "network_down": self._trend_string(
+                [snapshot.net_recv_rate_smoothed for snapshot in recent]
+            ),
         }
 
     @staticmethod
@@ -141,3 +162,9 @@ class SystemSampler:
             trend_chars.append(blocks[index])
 
         return "".join(trend_chars)
+
+    @staticmethod
+    def _average(values: list[float]) -> float:
+        if not values:
+            return 0.0
+        return sum(values) / len(values)

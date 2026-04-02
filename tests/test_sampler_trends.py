@@ -22,6 +22,8 @@ class SystemSamplerTrendTest(TestCase):
                     net_bytes_recv=200,
                     net_sent_rate=float(second * 10),
                     net_recv_rate=float(second * 20),
+                    net_sent_rate_smoothed=float(second * 10),
+                    net_recv_rate_smoothed=float(second * 20),
                     alerts=[],
                     gpu_info=[],
                     top_processes=[],

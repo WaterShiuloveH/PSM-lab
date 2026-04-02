@@ -31,6 +31,8 @@ class SystemSnapshot:
     net_bytes_recv: int
     net_sent_rate: float
     net_recv_rate: float
+    net_sent_rate_smoothed: float
+    net_recv_rate_smoothed: float
     alerts: list[str]
     gpu_info: list[GpuInfo]
     top_processes: list[ProcessInfo]

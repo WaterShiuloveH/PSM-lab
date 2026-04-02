@@ -19,6 +19,8 @@ class AlertEvaluatorTest(TestCase):
             net_bytes_recv=200,
             net_sent_rate=0.0,
             net_recv_rate=0.0,
+            net_sent_rate_smoothed=0.0,
+            net_recv_rate_smoothed=0.0,
             alerts=[],
             gpu_info=[
                 GpuInfo(

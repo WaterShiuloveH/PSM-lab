@@ -19,6 +19,8 @@ class RenderSnapshotTest(TestCase):
             net_bytes_recv=5678,
             net_sent_rate=2048.0,
             net_recv_rate=512.0,
+            net_sent_rate_smoothed=1024.0,
+            net_recv_rate_smoothed=256.0,
             alerts=["High memory usage: 80.0%"],
             gpu_info=[
                 GpuInfo(
@@ -40,9 +42,13 @@ class RenderSnapshotTest(TestCase):
         self.assertIn("Memory:", rendered)
         self.assertIn("Disk:", rendered)
         self.assertIn("Net Up:", rendered)
+        self.assertIn("1.00 KB/s", rendered)
         self.assertIn("2.00 KB/s", rendered)
         self.assertIn("Net Down:", rendered)
+        self.assertIn("256.00 B/s", rendered)
         self.assertIn("512.00 B/s", rendered)
+        self.assertIn("Net Up Raw:", rendered)
+        self.assertIn("Net Down Raw:", rendered)
         self.assertIn("Net Sent Total: 1234 bytes", rendered)
         self.assertIn("Net Recv Total: 5678 bytes", rendered)
         self.assertIn("Recent Trends:", rendered)
@@ -68,6 +74,8 @@ class RenderSnapshotTest(TestCase):
             net_bytes_recv=200,
             net_sent_rate=10.0,
             net_recv_rate=20.0,
+            net_sent_rate_smoothed=8.0,
+            net_recv_rate_smoothed=16.0,
             alerts=[],
             gpu_info=[],
             top_processes=[],
