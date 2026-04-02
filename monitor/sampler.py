@@ -70,3 +70,31 @@ class SystemSampler:
         self._previous_net_sent = sent
         self._previous_net_recv = recv
         return sent_rate, recv_rate
+
+    def summarize_recent_trends(self, points: int = 5) -> dict[str, str]:
+        recent = list(self.history)[-points:]
+        return {
+            "cpu": self._trend_string([snapshot.cpu_percent for snapshot in recent]),
+            "memory": self._trend_string([snapshot.memory_percent for snapshot in recent]),
+            "network_up": self._trend_string([snapshot.net_sent_rate for snapshot in recent]),
+            "network_down": self._trend_string([snapshot.net_recv_rate for snapshot in recent]),
+        }
+
+    @staticmethod
+    def _trend_string(values: list[float]) -> str:
+        if not values:
+            return "n/a"
+
+        minimum = min(values)
+        maximum = max(values)
+        if maximum - minimum < 1e-9:
+            return "▁" * len(values)
+
+        blocks = "▁▂▃▄▅▆▇█"
+        trend_chars: list[str] = []
+        for value in values:
+            normalized = (value - minimum) / (maximum - minimum)
+            index = min(int(normalized * (len(blocks) - 1)), len(blocks) - 1)
+            trend_chars.append(blocks[index])
+
+        return "".join(trend_chars)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 import time
 
 from monitor.alerts import AlertEvaluator
@@ -41,9 +42,12 @@ def main(argv: list[str] | None = None) -> None:
     while True:
         snapshot = sampler.sample()
         clear_screen()
-        print(render_snapshot(snapshot))
+        print(render_snapshot(snapshot, trends=sampler.summarize_recent_trends()))
         time.sleep(args.interval)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nMonitor stopped.", file=sys.stderr)

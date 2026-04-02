@@ -15,7 +15,7 @@ def _format_rate(num_bytes_per_second: float) -> str:
     return f"{value:0.2f} GB/s"
 
 
-def render_snapshot(snapshot: SystemSnapshot) -> str:
+def render_snapshot(snapshot: SystemSnapshot, trends: dict[str, str] | None = None) -> str:
     max_cores_to_show = 8
     shown_cores = snapshot.per_cpu_percent[:max_cores_to_show]
     remaining_cores = len(snapshot.per_cpu_percent) - len(shown_cores)
@@ -25,6 +25,8 @@ def render_snapshot(snapshot: SystemSnapshot) -> str:
     )
     if remaining_cores > 0:
         per_core_summary = f"{per_core_summary}, +{remaining_cores} more"
+
+    trends = trends or {}
 
     lines = [
         f"Time: {snapshot.timestamp:%Y-%m-%d %H:%M:%S}",
@@ -36,6 +38,13 @@ def render_snapshot(snapshot: SystemSnapshot) -> str:
         f"Net Down: {_format_rate(snapshot.net_recv_rate)}",
         f"Net Sent Total: {snapshot.net_bytes_sent} bytes",
         f"Net Recv Total: {snapshot.net_bytes_recv} bytes",
+        "",
+        "Recent Trends:",
+        "  Legend: low -> high | ▁▂▃▄▅▆▇█",
+        f"  CPU:      {trends.get('cpu', 'n/a')}",
+        f"  Memory:   {trends.get('memory', 'n/a')}",
+        f"  Net Up:   {trends.get('network_up', 'n/a')}",
+        f"  Net Down: {trends.get('network_down', 'n/a')}",
         "",
         f"Per-Core: {per_core_summary or 'unavailable'}",
         "",

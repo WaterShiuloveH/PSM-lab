@@ -45,6 +45,8 @@ class RenderSnapshotTest(TestCase):
         self.assertIn("512.00 B/s", rendered)
         self.assertIn("Net Sent Total: 1234 bytes", rendered)
         self.assertIn("Net Recv Total: 5678 bytes", rendered)
+        self.assertIn("Recent Trends:", rendered)
+        self.assertIn("Legend: low -> high | ▁▂▃▄▅▆▇█", rendered)
         self.assertIn("Per-Core:", rendered)
         self.assertIn("c0:", rendered)
         self.assertIn("Alerts:", rendered)
@@ -54,3 +56,34 @@ class RenderSnapshotTest(TestCase):
         self.assertIn("Top Processes:", rendered)
         self.assertIn("PID=42", rendered)
         self.assertIn("python", rendered)
+
+    def test_render_snapshot_includes_custom_trends(self) -> None:
+        snapshot = SystemSnapshot(
+            timestamp=datetime(2026, 4, 2, 16, 30, 0),
+            cpu_percent=10.0,
+            per_cpu_percent=[10.0],
+            memory_percent=20.0,
+            disk_percent=30.0,
+            net_bytes_sent=100,
+            net_bytes_recv=200,
+            net_sent_rate=10.0,
+            net_recv_rate=20.0,
+            alerts=[],
+            gpu_info=[],
+            top_processes=[],
+        )
+
+        rendered = render_snapshot(
+            snapshot,
+            trends={
+                "cpu": "▁▃▆█",
+                "memory": "▂▂▅▅",
+                "network_up": "▁▁▃▅",
+                "network_down": "▁▄▆█",
+            },
+        )
+
+        self.assertIn("CPU:      ▁▃▆█", rendered)
+        self.assertIn("Memory:   ▂▂▅▅", rendered)
+        self.assertIn("Net Up:   ▁▁▃▅", rendered)
+        self.assertIn("Net Down: ▁▄▆█", rendered)
