@@ -20,6 +20,8 @@ class MainArgsTest(TestCase):
         self.assertEqual(args.cpu_threshold, 90.0)
         self.assertEqual(args.memory_threshold, 85.0)
         self.assertEqual(args.disk_threshold, 90.0)
+        self.assertIsNone(args.export_file)
+        self.assertEqual(args.export_format, "json")
 
     def test_parse_args_accepts_custom_values(self) -> None:
         args = parse_args(
@@ -38,6 +40,10 @@ class MainArgsTest(TestCase):
                 "70",
                 "--disk-threshold",
                 "80",
+                "--export-file",
+                "snapshots.csv",
+                "--export-format",
+                "csv",
             ]
         )
 
@@ -48,18 +54,22 @@ class MainArgsTest(TestCase):
         self.assertEqual(args.cpu_threshold, 75.0)
         self.assertEqual(args.memory_threshold, 70.0)
         self.assertEqual(args.disk_threshold, 80.0)
+        self.assertEqual(args.export_file, "snapshots.csv")
+        self.assertEqual(args.export_format, "csv")
 
 
 class MainRuntimeTest(TestCase):
     @patch("main.time.sleep", side_effect=[None, KeyboardInterrupt])
     @patch("main.render_snapshot", return_value="snapshot")
     @patch("main.clear_screen")
+    @patch("main.create_exporter")
     @patch("main.SystemSampler")
     @patch("main.parse_args")
     def test_main_uses_sampler_trends_when_rendering(
         self,
         mock_parse_args,
         mock_system_sampler,
+        mock_create_exporter,
         mock_clear_screen,
         mock_render_snapshot,
         mock_sleep,
@@ -72,11 +82,15 @@ class MainRuntimeTest(TestCase):
             cpu_threshold=90.0,
             memory_threshold=85.0,
             disk_threshold=90.0,
+            export_file="out.jsonl",
+            export_format="json",
         )
         sampler = Mock()
         sampler.sample.return_value = Mock()
         sampler.summarize_recent_trends.return_value = {"cpu": ".-#"}
         mock_system_sampler.return_value = sampler
+        exporter = Mock()
+        mock_create_exporter.return_value = exporter
 
         with self.assertRaises(KeyboardInterrupt):
             main([])
@@ -85,4 +99,6 @@ class MainRuntimeTest(TestCase):
             sampler.sample.return_value,
             trends={"cpu": ".-#"},
         )
+        exporter.write.assert_called_once_with(sampler.sample.return_value)
+        exporter.close.assert_called_once()
         mock_system_sampler.assert_called_once()

@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: test smoke run compile
+.PHONY: test smoke run compile export-json export-csv
 
 test:
 	$(PYTHON) -m unittest discover -s tests -v
@@ -13,3 +13,9 @@ run:
 
 compile:
 	$(PYTHON) -m compileall .
+
+export-json:
+	$(PYTHON) main.py --export-file snapshots.jsonl --export-format json
+
+export-csv:
+	$(PYTHON) main.py --export-file snapshots.csv --export-format csv
