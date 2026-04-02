@@ -29,6 +29,8 @@ class SystemSnapshot:
     disk_percent: float
     net_bytes_sent: int
     net_bytes_recv: int
+    net_sent_rate: float
+    net_recv_rate: float
     alerts: list[str]
     gpu_info: list[GpuInfo]
     top_processes: list[ProcessInfo]

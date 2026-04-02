@@ -29,6 +29,7 @@ Use this order:
 - Refresh every N seconds
 - Optionally store historical metrics
 - Optionally expose alerts
+- Optionally configure thresholds and refresh intervals from the command line
 
 ### Non-functional requirements
 

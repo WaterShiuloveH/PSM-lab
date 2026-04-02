@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import argparse
 import os
 import time
 
+from monitor.alerts import AlertEvaluator
 from monitor.sampler import SystemSampler
 from monitor.ui import render_snapshot
 
@@ -11,18 +13,36 @@ def clear_screen() -> None:
     os.system("clear")
 
 
-def main() -> None:
-    sampler = SystemSampler(history_size=60)
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Linux system monitor in Python")
+    parser.add_argument("--interval", type=float, default=1.0, help="Refresh interval in seconds")
+    parser.add_argument("--history-size", type=int, default=60, help="Number of snapshots to keep")
+    parser.add_argument("--cpu-threshold", type=float, default=90.0, help="CPU alert threshold")
+    parser.add_argument("--memory-threshold", type=float, default=85.0, help="Memory alert threshold")
+    parser.add_argument("--disk-threshold", type=float, default=90.0, help="Disk alert threshold")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+    sampler = SystemSampler(
+        history_size=args.history_size,
+        alert_evaluator=AlertEvaluator(
+            cpu_threshold=args.cpu_threshold,
+            memory_threshold=args.memory_threshold,
+            disk_threshold=args.disk_threshold,
+        ),
+    )
 
     # Prime process CPU percentages so later samples become meaningful.
     sampler.sample()
-    time.sleep(1)
+    time.sleep(args.interval)
 
     while True:
         snapshot = sampler.sample()
         clear_screen()
         print(render_snapshot(snapshot))
-        time.sleep(1)
+        time.sleep(args.interval)
 
 
 if __name__ == "__main__":

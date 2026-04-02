@@ -3,6 +3,18 @@ from __future__ import annotations
 from monitor.models import SystemSnapshot
 
 
+def _format_rate(num_bytes_per_second: float) -> str:
+    units = ["B/s", "KB/s", "MB/s", "GB/s"]
+    value = num_bytes_per_second
+
+    for unit in units:
+        if value < 1024 or unit == units[-1]:
+            return f"{value:0.2f} {unit}"
+        value /= 1024
+
+    return f"{value:0.2f} GB/s"
+
+
 def render_snapshot(snapshot: SystemSnapshot) -> str:
     max_cores_to_show = 8
     shown_cores = snapshot.per_cpu_percent[:max_cores_to_show]
@@ -20,8 +32,10 @@ def render_snapshot(snapshot: SystemSnapshot) -> str:
         f"CPU:    {snapshot.cpu_percent:>6.2f}%",
         f"Memory: {snapshot.memory_percent:>6.2f}%",
         f"Disk:   {snapshot.disk_percent:>6.2f}%",
-        f"Net Sent: {snapshot.net_bytes_sent} bytes",
-        f"Net Recv: {snapshot.net_bytes_recv} bytes",
+        f"Net Up:   {_format_rate(snapshot.net_sent_rate)}",
+        f"Net Down: {_format_rate(snapshot.net_recv_rate)}",
+        f"Net Sent Total: {snapshot.net_bytes_sent} bytes",
+        f"Net Recv Total: {snapshot.net_bytes_recv} bytes",
         "",
         f"Per-Core: {per_core_summary or 'unavailable'}",
         "",
