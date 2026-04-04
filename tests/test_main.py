@@ -20,6 +20,8 @@ class MainArgsTest(TestCase):
         self.assertEqual(args.cpu_threshold, 90.0)
         self.assertEqual(args.memory_threshold, 85.0)
         self.assertEqual(args.disk_threshold, 90.0)
+        self.assertEqual(args.http_host, "127.0.0.1")
+        self.assertEqual(args.http_port, 0)
         self.assertIsNone(args.export_file)
         self.assertEqual(args.export_format, "json")
 
@@ -40,6 +42,10 @@ class MainArgsTest(TestCase):
                 "70",
                 "--disk-threshold",
                 "80",
+                "--http-host",
+                "0.0.0.0",
+                "--http-port",
+                "8000",
                 "--export-file",
                 "snapshots.db",
                 "--export-format",
@@ -54,6 +60,8 @@ class MainArgsTest(TestCase):
         self.assertEqual(args.cpu_threshold, 75.0)
         self.assertEqual(args.memory_threshold, 70.0)
         self.assertEqual(args.disk_threshold, 80.0)
+        self.assertEqual(args.http_host, "0.0.0.0")
+        self.assertEqual(args.http_port, 8000)
         self.assertEqual(args.export_file, "snapshots.db")
         self.assertEqual(args.export_format, "sqlite")
 
@@ -62,6 +70,8 @@ class MainRuntimeTest(TestCase):
     @patch("main.time.sleep", side_effect=[None, KeyboardInterrupt])
     @patch("main.render_snapshot", return_value="snapshot")
     @patch("main.clear_screen")
+    @patch("main.ApiServerHandle")
+    @patch("main.create_api_server")
     @patch("main.create_exporter")
     @patch("main.SystemSampler")
     @patch("main.parse_args")
@@ -70,6 +80,8 @@ class MainRuntimeTest(TestCase):
         mock_parse_args,
         mock_system_sampler,
         mock_create_exporter,
+        mock_create_api_server,
+        mock_api_server_handle,
         mock_clear_screen,
         mock_render_snapshot,
         mock_sleep,
@@ -82,6 +94,8 @@ class MainRuntimeTest(TestCase):
             cpu_threshold=90.0,
             memory_threshold=85.0,
             disk_threshold=90.0,
+            http_host="127.0.0.1",
+            http_port=8000,
             export_file="out.jsonl",
             export_format="json",
         )
@@ -91,6 +105,8 @@ class MainRuntimeTest(TestCase):
         mock_system_sampler.return_value = sampler
         exporter = Mock()
         mock_create_exporter.return_value = exporter
+        api_handle = Mock()
+        mock_api_server_handle.return_value = api_handle
 
         with self.assertRaises(KeyboardInterrupt):
             main([])
@@ -99,6 +115,9 @@ class MainRuntimeTest(TestCase):
             sampler.sample.return_value,
             trends={"cpu": ".-#"},
         )
+        mock_create_api_server.assert_called_once()
+        api_handle.start.assert_called_once()
+        api_handle.close.assert_called_once()
         exporter.write.assert_called_once_with(sampler.sample.return_value)
         exporter.close.assert_called_once()
         mock_system_sampler.assert_called_once()

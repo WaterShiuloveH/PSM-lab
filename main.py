@@ -5,6 +5,7 @@ import os
 import sys
 import time
 
+from monitor.api import ApiServerHandle, create_api_server
 from monitor.alerts import AlertEvaluator
 from monitor.exporters import create_exporter
 from monitor.sampler import SystemSampler
@@ -34,6 +35,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--cpu-threshold", type=float, default=90.0, help="CPU alert threshold")
     parser.add_argument("--memory-threshold", type=float, default=85.0, help="Memory alert threshold")
     parser.add_argument("--disk-threshold", type=float, default=90.0, help="Disk alert threshold")
+    parser.add_argument("--http-host", type=str, default="127.0.0.1", help="HTTP API bind host")
+    parser.add_argument("--http-port", type=int, default=0, help="Optional HTTP API port")
     parser.add_argument("--export-file", type=str, default=None, help="Optional export file path")
     parser.add_argument(
         "--export-format",
@@ -57,6 +60,16 @@ def main(argv: list[str] | None = None) -> None:
         gpu_refresh_interval=args.gpu_refresh_interval,
     )
     exporter = create_exporter(args.export_file, args.export_format)
+    api_handle = None
+    if args.http_port:
+        api_server = create_api_server(
+            args.http_host,
+            args.http_port,
+            latest_snapshot_provider=lambda: sampler.history[-1] if sampler.history else None,
+            history_provider=lambda limit: list(sampler.history)[-limit:],
+        )
+        api_handle = ApiServerHandle(api_server)
+        api_handle.start()
 
     try:
         # Prime process CPU percentages so later samples become meaningful.
@@ -71,6 +84,8 @@ def main(argv: list[str] | None = None) -> None:
             print(render_snapshot(snapshot, trends=sampler.summarize_recent_trends()))
             time.sleep(args.interval)
     finally:
+        if api_handle is not None:
+            api_handle.close()
         if exporter is not None:
             exporter.close()
 

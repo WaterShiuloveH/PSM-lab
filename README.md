@@ -19,6 +19,7 @@ It can be used in two ways:
 - configurable CLI flags for refresh and alert thresholds
 - lower-overhead sampling with cached slow collectors
 - optional snapshot export to JSON, CSV, or SQLite
+- optional HTTP API for latest snapshot and recent history
 
 ## Run
 
@@ -55,6 +56,20 @@ python3 main.py --export-file snapshots.csv --export-format csv
 python3 main.py --export-file snapshots.db --export-format sqlite
 ```
 
+Run with the API enabled:
+
+```bash
+python3 main.py --http-port 8000
+```
+
+Example API calls:
+
+```bash
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/api/latest
+curl "http://127.0.0.1:8000/api/history?limit=5"
+```
+
 ## Test
 
 Using the `Makefile`:
@@ -67,6 +82,7 @@ make compile
 make export-json
 make export-csv
 make export-sqlite
+make api
 ```
 
 Direct commands:
@@ -83,6 +99,7 @@ The monitor is structured in layers:
 - collectors gather machine data
 - sampler builds time-based snapshots and rate calculations
 - exporters persist snapshots to JSON, CSV, or SQLite
+- API exposes health, latest snapshot, and recent history
 - alerts evaluate thresholds
 - UI renders a terminal dashboard
 - `main.py` wires configuration and runtime behavior together

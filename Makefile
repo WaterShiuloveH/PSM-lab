@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: test smoke run compile export-json export-csv export-sqlite
+.PHONY: test smoke run compile export-json export-csv export-sqlite api
 
 test:
 	$(PYTHON) -m unittest discover -s tests -v
@@ -22,3 +22,6 @@ export-csv:
 
 export-sqlite:
 	$(PYTHON) main.py --export-file snapshots.db --export-format sqlite
+
+api:
+	$(PYTHON) main.py --http-port 8000
