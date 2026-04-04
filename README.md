@@ -18,7 +18,7 @@ It can be used in two ways:
 - optional GPU collection through `nvidia-smi`
 - configurable CLI flags for refresh and alert thresholds
 - lower-overhead sampling with cached slow collectors
-- optional snapshot export to JSON or CSV
+- optional snapshot export to JSON, CSV, or SQLite
 
 ## Run
 
@@ -52,6 +52,7 @@ Run with export enabled:
 ```bash
 python3 main.py --export-file snapshots.jsonl --export-format json
 python3 main.py --export-file snapshots.csv --export-format csv
+python3 main.py --export-file snapshots.db --export-format sqlite
 ```
 
 ## Test
@@ -65,6 +66,7 @@ make run
 make compile
 make export-json
 make export-csv
+make export-sqlite
 ```
 
 Direct commands:
@@ -80,7 +82,7 @@ The monitor is structured in layers:
 
 - collectors gather machine data
 - sampler builds time-based snapshots and rate calculations
-- exporters persist snapshots to JSON or CSV
+- exporters persist snapshots to JSON, CSV, or SQLite
 - alerts evaluate thresholds
 - UI renders a terminal dashboard
 - `main.py` wires configuration and runtime behavior together
@@ -94,6 +96,12 @@ For network throughput, the monitor keeps both:
 
 - raw per-sample rates for fidelity
 - smoothed rates for a steadier terminal display
+
+Generated snapshot export files are ignored by git by default:
+
+- `snapshots.jsonl`
+- `snapshots.csv`
+- `snapshots.db`
 
 This folder also includes a small crash course for learning system design through the same example:
 

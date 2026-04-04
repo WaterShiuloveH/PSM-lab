@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+snapshots.jsonl
+snapshots.csv
+snapshots.db

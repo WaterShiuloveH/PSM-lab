@@ -41,9 +41,9 @@ class MainArgsTest(TestCase):
                 "--disk-threshold",
                 "80",
                 "--export-file",
-                "snapshots.csv",
+                "snapshots.db",
                 "--export-format",
-                "csv",
+                "sqlite",
             ]
         )
 
@@ -54,8 +54,8 @@ class MainArgsTest(TestCase):
         self.assertEqual(args.cpu_threshold, 75.0)
         self.assertEqual(args.memory_threshold, 70.0)
         self.assertEqual(args.disk_threshold, 80.0)
-        self.assertEqual(args.export_file, "snapshots.csv")
-        self.assertEqual(args.export_format, "csv")
+        self.assertEqual(args.export_file, "snapshots.db")
+        self.assertEqual(args.export_format, "sqlite")
 
 
 class MainRuntimeTest(TestCase):

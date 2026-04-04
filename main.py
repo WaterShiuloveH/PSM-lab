@@ -37,7 +37,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--export-file", type=str, default=None, help="Optional export file path")
     parser.add_argument(
         "--export-format",
-        choices=("json", "csv"),
+        choices=("json", "csv", "sqlite"),
         default="json",
         help="Export format when --export-file is set",
     )

@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import tempfile
 from datetime import datetime
 from pathlib import Path
 from unittest import TestCase
 
-from monitor.exporters import CsvSnapshotExporter, JsonSnapshotExporter, create_exporter
+from monitor.exporters import (
+    CsvSnapshotExporter,
+    JsonSnapshotExporter,
+    SqliteSnapshotExporter,
+    create_exporter,
+)
 from monitor.models import GpuInfo, ProcessInfo, SystemSnapshot
 
 
@@ -57,3 +63,21 @@ class ExporterTest(TestCase):
 
     def test_create_exporter_returns_none_without_path(self) -> None:
         self.assertIsNone(create_exporter(None, "json"))
+
+    def test_sqlite_exporter_inserts_snapshot_row(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "monitor.db"
+            exporter = SqliteSnapshotExporter(str(output))
+            exporter.write(build_snapshot())
+            exporter.close()
+
+            connection = sqlite3.connect(output)
+            row = connection.execute(
+                "SELECT timestamp, cpu_percent, net_sent_rate_smoothed, alerts FROM snapshots"
+            ).fetchone()
+            connection.close()
+
+            self.assertEqual(row[0], "2026-04-02T19:30:00")
+            self.assertEqual(row[1], 10.0)
+            self.assertEqual(row[2], 2.5)
+            self.assertEqual(row[3], '["warning"]')
