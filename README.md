@@ -103,6 +103,7 @@ make export-json
 make export-csv
 make export-sqlite
 make api
+make test-alerts
 ```
 
 Direct commands:
