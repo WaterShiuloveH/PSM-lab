@@ -20,6 +20,8 @@ class MainArgsTest(TestCase):
         self.assertEqual(args.cpu_threshold, 90.0)
         self.assertEqual(args.memory_threshold, 85.0)
         self.assertEqual(args.disk_threshold, 90.0)
+        self.assertEqual(args.alert_sustain_samples, 3)
+        self.assertEqual(args.alert_cooldown_seconds, 30.0)
         self.assertEqual(args.http_host, "127.0.0.1")
         self.assertEqual(args.http_port, 0)
         self.assertIsNone(args.export_file)
@@ -42,6 +44,10 @@ class MainArgsTest(TestCase):
                 "70",
                 "--disk-threshold",
                 "80",
+                "--alert-sustain-samples",
+                "5",
+                "--alert-cooldown-seconds",
+                "45",
                 "--http-host",
                 "0.0.0.0",
                 "--http-port",
@@ -60,6 +66,8 @@ class MainArgsTest(TestCase):
         self.assertEqual(args.cpu_threshold, 75.0)
         self.assertEqual(args.memory_threshold, 70.0)
         self.assertEqual(args.disk_threshold, 80.0)
+        self.assertEqual(args.alert_sustain_samples, 5)
+        self.assertEqual(args.alert_cooldown_seconds, 45.0)
         self.assertEqual(args.http_host, "0.0.0.0")
         self.assertEqual(args.http_port, 8000)
         self.assertEqual(args.export_file, "snapshots.db")
@@ -94,6 +102,8 @@ class MainRuntimeTest(TestCase):
             cpu_threshold=90.0,
             memory_threshold=85.0,
             disk_threshold=90.0,
+            alert_sustain_samples=3,
+            alert_cooldown_seconds=30.0,
             http_host="127.0.0.1",
             http_port=8000,
             export_file="out.jsonl",

@@ -13,7 +13,7 @@ It can be used in two ways:
 - per-core CPU visibility
 - raw and smoothed network throughput
 - top process reporting
-- threshold-based alerts
+- sustained threshold-based alerts with cooldowns
 - recent trend sparklines in the terminal
 - optional GPU collection through `nvidia-smi`
 - configurable CLI flags for refresh and alert thresholds
@@ -56,6 +56,17 @@ python3 main.py --export-file snapshots.csv --export-format csv
 python3 main.py --export-file snapshots.db --export-format sqlite
 ```
 
+Run with custom alert behavior:
+
+```bash
+python3 main.py \
+  --cpu-threshold 80 \
+  --memory-threshold 80 \
+  --disk-threshold 85 \
+  --alert-sustain-samples 3 \
+  --alert-cooldown-seconds 30
+```
+
 Run with the API enabled:
 
 ```bash
@@ -69,6 +80,15 @@ curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/api/latest
 curl "http://127.0.0.1:8000/api/history?limit=5"
 ```
+
+## API Endpoints
+
+- `GET /health`
+  - returns a simple health response
+- `GET /api/latest`
+  - returns the latest sampled snapshot
+- `GET /api/history?limit=5`
+  - returns the most recent snapshots up to the requested limit
 
 ## Test
 
@@ -114,6 +134,11 @@ For network throughput, the monitor keeps both:
 - raw per-sample rates for fidelity
 - smoothed rates for a steadier terminal display
 
+For alerts, the monitor uses:
+
+- sustained samples to avoid firing on one noisy spike
+- cooldown windows to reduce repeated alert spam
+
 Generated snapshot export files are ignored by git by default:
 
 - `snapshots.jsonl`
@@ -150,6 +175,7 @@ Use this order:
 - Optionally store historical metrics
 - Optionally expose alerts
 - Optionally configure thresholds and refresh intervals from the command line
+- Optionally require sustained threshold breaches before alerting
 
 ### Non-functional requirements
 

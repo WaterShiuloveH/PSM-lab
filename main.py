@@ -35,6 +35,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--cpu-threshold", type=float, default=90.0, help="CPU alert threshold")
     parser.add_argument("--memory-threshold", type=float, default=85.0, help="Memory alert threshold")
     parser.add_argument("--disk-threshold", type=float, default=90.0, help="Disk alert threshold")
+    parser.add_argument(
+        "--alert-sustain-samples",
+        type=int,
+        default=3,
+        help="Number of consecutive samples required before firing an alert",
+    )
+    parser.add_argument(
+        "--alert-cooldown-seconds",
+        type=float,
+        default=30.0,
+        help="Cooldown window before repeating the same alert",
+    )
     parser.add_argument("--http-host", type=str, default="127.0.0.1", help="HTTP API bind host")
     parser.add_argument("--http-port", type=int, default=0, help="Optional HTTP API port")
     parser.add_argument("--export-file", type=str, default=None, help="Optional export file path")
@@ -55,6 +67,8 @@ def main(argv: list[str] | None = None) -> None:
             cpu_threshold=args.cpu_threshold,
             memory_threshold=args.memory_threshold,
             disk_threshold=args.disk_threshold,
+            sustain_samples=args.alert_sustain_samples,
+            cooldown_seconds=args.alert_cooldown_seconds,
         ),
         process_refresh_interval=args.process_refresh_interval,
         gpu_refresh_interval=args.gpu_refresh_interval,
