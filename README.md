@@ -73,6 +73,12 @@ Run with the API enabled:
 python3 main.py --http-port 8000
 ```
 
+Run with both SQLite persistence and the API enabled:
+
+```bash
+python3 main.py --export-file snapshots.db --export-format sqlite --http-port 8000
+```
+
 Example API calls:
 
 ```bash
@@ -109,6 +115,7 @@ make export-json
 make export-csv
 make export-sqlite
 make api
+make api-sqlite
 make test-alerts
 ```
 

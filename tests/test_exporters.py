@@ -12,6 +12,8 @@ from monitor.exporters import (
     JsonSnapshotExporter,
     SqliteSnapshotExporter,
     create_exporter,
+    load_sqlite_history,
+    load_sqlite_latest,
 )
 from monitor.models import GpuInfo, ProcessInfo, SystemSnapshot
 
@@ -81,3 +83,24 @@ class ExporterTest(TestCase):
             self.assertEqual(row[1], 10.0)
             self.assertEqual(row[2], 2.5)
             self.assertEqual(row[3], '["warning"]')
+
+    def test_sqlite_loader_reads_latest_and_history(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "monitor.db"
+            exporter = SqliteSnapshotExporter(str(output))
+            first = build_snapshot()
+            second = build_snapshot()
+            second.cpu_percent = 20.0
+            second.timestamp = datetime(2026, 4, 2, 19, 31, 0)
+            exporter.write(first)
+            exporter.write(second)
+            exporter.close()
+
+            latest = load_sqlite_latest(str(output))
+            history = load_sqlite_history(str(output), 2)
+
+            self.assertIsNotNone(latest)
+            self.assertEqual(latest.cpu_percent, 20.0)
+            self.assertEqual(len(history), 2)
+            self.assertEqual(history[0].cpu_percent, 10.0)
+            self.assertEqual(history[1].cpu_percent, 20.0)

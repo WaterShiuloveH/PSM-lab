@@ -7,7 +7,7 @@ import time
 
 from monitor.api import ApiServerHandle, create_api_server
 from monitor.alerts import AlertEvaluator
-from monitor.exporters import create_exporter
+from monitor.exporters import create_exporter, load_sqlite_history, load_sqlite_latest
 from monitor.sampler import SystemSampler
 from monitor.ui import render_snapshot
 
@@ -76,11 +76,17 @@ def main(argv: list[str] | None = None) -> None:
     exporter = create_exporter(args.export_file, args.export_format)
     api_handle = None
     if args.http_port:
+        if args.export_format == "sqlite" and args.export_file:
+            latest_snapshot_provider = lambda: load_sqlite_latest(args.export_file)
+            history_provider = lambda limit: load_sqlite_history(args.export_file, limit)
+        else:
+            latest_snapshot_provider = lambda: sampler.history[-1] if sampler.history else None
+            history_provider = lambda limit: list(sampler.history)[-limit:]
         api_server = create_api_server(
             args.http_host,
             args.http_port,
-            latest_snapshot_provider=lambda: sampler.history[-1] if sampler.history else None,
-            history_provider=lambda limit: list(sampler.history)[-limit:],
+            latest_snapshot_provider=latest_snapshot_provider,
+            history_provider=history_provider,
         )
         api_handle = ApiServerHandle(api_server)
         api_handle.start()

@@ -81,12 +81,16 @@ class MainRuntimeTest(TestCase):
     @patch("main.ApiServerHandle")
     @patch("main.create_api_server")
     @patch("main.create_exporter")
+    @patch("main.load_sqlite_history")
+    @patch("main.load_sqlite_latest")
     @patch("main.SystemSampler")
     @patch("main.parse_args")
     def test_main_uses_sampler_trends_when_rendering(
         self,
         mock_parse_args,
         mock_system_sampler,
+        mock_load_sqlite_latest,
+        mock_load_sqlite_history,
         mock_create_exporter,
         mock_create_api_server,
         mock_api_server_handle,
@@ -106,8 +110,8 @@ class MainRuntimeTest(TestCase):
             alert_cooldown_seconds=30.0,
             http_host="127.0.0.1",
             http_port=8000,
-            export_file="out.jsonl",
-            export_format="json",
+            export_file="out.db",
+            export_format="sqlite",
         )
         sampler = Mock()
         sampler.sample.return_value = Mock()
@@ -117,6 +121,8 @@ class MainRuntimeTest(TestCase):
         mock_create_exporter.return_value = exporter
         api_handle = Mock()
         mock_api_server_handle.return_value = api_handle
+        mock_load_sqlite_latest.return_value = None
+        mock_load_sqlite_history.return_value = []
 
         with self.assertRaises(KeyboardInterrupt):
             main([])
@@ -126,6 +132,8 @@ class MainRuntimeTest(TestCase):
             trends={"cpu": ".-#"},
         )
         mock_create_api_server.assert_called_once()
+        self.assertEqual(mock_create_api_server.call_args.kwargs["latest_snapshot_provider"](), None)
+        self.assertEqual(mock_create_api_server.call_args.kwargs["history_provider"](5), [])
         api_handle.start.assert_called_once()
         api_handle.close.assert_called_once()
         exporter.write.assert_called_once_with(sampler.sample.return_value)

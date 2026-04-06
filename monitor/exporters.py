@@ -4,9 +4,10 @@ import csv
 import json
 import sqlite3
 from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 
-from monitor.models import SystemSnapshot
+from monitor.models import GpuInfo, ProcessInfo, SystemSnapshot
 
 
 class SnapshotExporter:
@@ -83,29 +84,9 @@ class CsvSnapshotExporter(SnapshotExporter):
 
 class SqliteSnapshotExporter(SnapshotExporter):
     def __init__(self, path: str) -> None:
+        self.path = path
         self._connection = sqlite3.connect(path)
-        self._connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS snapshots (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT NOT NULL,
-                cpu_percent REAL NOT NULL,
-                per_cpu_percent TEXT NOT NULL,
-                memory_percent REAL NOT NULL,
-                disk_percent REAL NOT NULL,
-                net_bytes_sent INTEGER NOT NULL,
-                net_bytes_recv INTEGER NOT NULL,
-                net_sent_rate REAL NOT NULL,
-                net_recv_rate REAL NOT NULL,
-                net_sent_rate_smoothed REAL NOT NULL,
-                net_recv_rate_smoothed REAL NOT NULL,
-                alerts TEXT NOT NULL,
-                gpu_info TEXT NOT NULL,
-                top_processes TEXT NOT NULL
-            )
-            """
-        )
-        self._connection.commit()
+        initialize_sqlite_schema(self._connection)
 
     def write(self, snapshot: SystemSnapshot) -> None:
         record = snapshot_to_record(snapshot)
@@ -167,3 +148,134 @@ def snapshot_to_record(snapshot: SystemSnapshot) -> dict[str, object]:
     record = asdict(snapshot)
     record["timestamp"] = snapshot.timestamp.isoformat()
     return record
+
+
+def initialize_sqlite_schema(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            cpu_percent REAL NOT NULL,
+            per_cpu_percent TEXT NOT NULL,
+            memory_percent REAL NOT NULL,
+            disk_percent REAL NOT NULL,
+            net_bytes_sent INTEGER NOT NULL,
+            net_bytes_recv INTEGER NOT NULL,
+            net_sent_rate REAL NOT NULL,
+            net_recv_rate REAL NOT NULL,
+            net_sent_rate_smoothed REAL NOT NULL,
+            net_recv_rate_smoothed REAL NOT NULL,
+            alerts TEXT NOT NULL,
+            gpu_info TEXT NOT NULL,
+            top_processes TEXT NOT NULL
+        )
+        """
+    )
+    connection.commit()
+
+
+def load_sqlite_history(path: str, limit: int) -> list[SystemSnapshot]:
+    connection = sqlite3.connect(path)
+    try:
+        rows = connection.execute(
+            """
+            SELECT
+                timestamp,
+                cpu_percent,
+                per_cpu_percent,
+                memory_percent,
+                disk_percent,
+                net_bytes_sent,
+                net_bytes_recv,
+                net_sent_rate,
+                net_recv_rate,
+                net_sent_rate_smoothed,
+                net_recv_rate_smoothed,
+                alerts,
+                gpu_info,
+                top_processes
+            FROM snapshots
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    finally:
+        connection.close()
+
+    snapshots = [_snapshot_from_sqlite_row(row) for row in reversed(rows)]
+    return snapshots
+
+
+def load_sqlite_latest(path: str) -> SystemSnapshot | None:
+    connection = sqlite3.connect(path)
+    try:
+        row = connection.execute(
+            """
+            SELECT
+                timestamp,
+                cpu_percent,
+                per_cpu_percent,
+                memory_percent,
+                disk_percent,
+                net_bytes_sent,
+                net_bytes_recv,
+                net_sent_rate,
+                net_recv_rate,
+                net_sent_rate_smoothed,
+                net_recv_rate_smoothed,
+                alerts,
+                gpu_info,
+                top_processes
+            FROM snapshots
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    finally:
+        connection.close()
+
+    if row is None:
+        return None
+    return _snapshot_from_sqlite_row(row)
+
+
+def _snapshot_from_sqlite_row(row: tuple[object, ...]) -> SystemSnapshot:
+    timestamp = datetime.fromisoformat(str(row[0]))
+    per_cpu_percent = [float(value) for value in json.loads(str(row[2]))]
+    alerts = [str(value) for value in json.loads(str(row[11]))]
+    gpu_info = [
+        GpuInfo(
+            name=str(item["name"]),
+            utilization_percent=float(item["utilization_percent"]),
+            memory_used_mb=int(item["memory_used_mb"]),
+            memory_total_mb=int(item["memory_total_mb"]),
+        )
+        for item in json.loads(str(row[12]))
+    ]
+    top_processes = [
+        ProcessInfo(
+            pid=int(item["pid"]),
+            name=str(item["name"]),
+            cpu_percent=float(item["cpu_percent"]),
+            memory_percent=float(item["memory_percent"]),
+        )
+        for item in json.loads(str(row[13]))
+    ]
+    return SystemSnapshot(
+        timestamp=timestamp,
+        cpu_percent=float(row[1]),
+        per_cpu_percent=per_cpu_percent,
+        memory_percent=float(row[3]),
+        disk_percent=float(row[4]),
+        net_bytes_sent=int(row[5]),
+        net_bytes_recv=int(row[6]),
+        net_sent_rate=float(row[7]),
+        net_recv_rate=float(row[8]),
+        net_sent_rate_smoothed=float(row[9]),
+        net_recv_rate_smoothed=float(row[10]),
+        alerts=alerts,
+        gpu_info=gpu_info,
+        top_processes=top_processes,
+    )
