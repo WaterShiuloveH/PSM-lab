@@ -46,6 +46,11 @@ class ApiServerTest(TestCase):
             latest_snapshot_provider=lambda: history[-1],
             history_provider=lambda limit: history[-limit:],
         )
+        summary_status, summary_payload = build_api_response(
+            "/api/summary?limit=2",
+            latest_snapshot_provider=lambda: history[-1],
+            history_provider=lambda limit: history[-limit:],
+        )
 
         self.assertEqual(health_status, HTTPStatus.OK)
         self.assertEqual(health_payload["status"], "ok")
@@ -54,6 +59,9 @@ class ApiServerTest(TestCase):
         self.assertEqual(history_status, HTTPStatus.OK)
         self.assertEqual(len(history_payload["snapshots"]), 2)
         self.assertEqual(history_payload["snapshots"][0]["timestamp"], "2026-04-04T22:40:02")
+        self.assertEqual(summary_status, HTTPStatus.OK)
+        self.assertEqual(summary_payload["summary"]["samples"], 2)
+        self.assertEqual(summary_payload["summary"]["latest"]["timestamp"], "2026-04-04T22:40:03")
 
     def test_api_returns_not_found_for_unknown_path(self) -> None:
         status, payload = build_api_response(
@@ -64,3 +72,19 @@ class ApiServerTest(TestCase):
 
         self.assertEqual(status, HTTPStatus.NOT_FOUND)
         self.assertEqual(payload["error"], "not_found")
+
+    def test_api_exposes_recent_alerts(self) -> None:
+        history = [build_snapshot(1), build_snapshot(2), build_snapshot(3)]
+        history[1].alerts = ["High CPU usage: 95.0%"]
+        history[2].alerts = ["High memory usage: 90.0%"]
+
+        status, payload = build_api_response(
+            "/api/alerts?limit=3",
+            latest_snapshot_provider=lambda: history[-1],
+            history_provider=lambda limit: history[-limit:],
+        )
+
+        self.assertEqual(status, HTTPStatus.OK)
+        self.assertEqual(len(payload["alerts"]), 2)
+        self.assertEqual(payload["alerts"][0]["message"], "High CPU usage: 95.0%")
+        self.assertEqual(payload["alerts"][1]["message"], "High memory usage: 90.0%")

@@ -63,6 +63,19 @@ def build_api_response(
             "snapshots": [snapshot_to_record(snapshot) for snapshot in history]
         }
 
+    if parsed.path == "/api/summary":
+        params = parse_qs(parsed.query)
+        limit = _parse_limit(params.get("limit", ["10"])[0], default=10)
+        history = history_provider(limit)
+        latest = latest_snapshot_provider()
+        return HTTPStatus.OK, {"summary": build_summary_payload(history, latest)}
+
+    if parsed.path == "/api/alerts":
+        params = parse_qs(parsed.query)
+        limit = _parse_limit(params.get("limit", ["10"])[0], default=10)
+        history = history_provider(limit)
+        return HTTPStatus.OK, {"alerts": build_alerts_payload(history)}
+
     return HTTPStatus.NOT_FOUND, {"error": "not_found"}
 
 
@@ -85,3 +98,46 @@ def _parse_limit(value: str, default: int) -> int:
         return max(int(value), 1)
     except ValueError:
         return default
+
+
+def build_summary_payload(
+    history: list[SystemSnapshot],
+    latest: SystemSnapshot | None,
+) -> dict[str, object]:
+    if not history:
+        return {
+            "samples": 0,
+            "latest": None,
+            "avg_cpu_percent": 0.0,
+            "avg_memory_percent": 0.0,
+            "avg_net_up": 0.0,
+            "avg_net_down": 0.0,
+        }
+
+    return {
+        "samples": len(history),
+        "latest": snapshot_to_record(latest) if latest is not None else None,
+        "avg_cpu_percent": _average([snapshot.cpu_percent for snapshot in history]),
+        "avg_memory_percent": _average([snapshot.memory_percent for snapshot in history]),
+        "avg_net_up": _average([snapshot.net_sent_rate_smoothed for snapshot in history]),
+        "avg_net_down": _average([snapshot.net_recv_rate_smoothed for snapshot in history]),
+    }
+
+
+def build_alerts_payload(history: list[SystemSnapshot]) -> list[dict[str, object]]:
+    payload: list[dict[str, object]] = []
+    for snapshot in history:
+        for message in snapshot.alerts:
+            payload.append(
+                {
+                    "timestamp": snapshot.timestamp.isoformat(),
+                    "message": message,
+                }
+            )
+    return payload
+
+
+def _average(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    return sum(values) / len(values)

@@ -19,7 +19,7 @@ It can be used in two ways:
 - configurable CLI flags for refresh and alert thresholds
 - lower-overhead sampling with cached slow collectors
 - optional snapshot export to JSON, CSV, or SQLite
-- optional HTTP API for latest snapshot and recent history
+- optional HTTP API for latest snapshot, recent history, summaries, and alerts
 
 ## Run
 
@@ -79,6 +79,8 @@ Example API calls:
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/api/latest
 curl "http://127.0.0.1:8000/api/history?limit=5"
+curl "http://127.0.0.1:8000/api/summary?limit=10"
+curl "http://127.0.0.1:8000/api/alerts?limit=20"
 ```
 
 ## API Endpoints
@@ -89,6 +91,10 @@ curl "http://127.0.0.1:8000/api/history?limit=5"
   - returns the latest sampled snapshot
 - `GET /api/history?limit=5`
   - returns the most recent snapshots up to the requested limit
+- `GET /api/summary?limit=10`
+  - returns recent averages and the latest sampled snapshot
+- `GET /api/alerts?limit=20`
+  - returns recent alert messages from sampled history
 
 ## Test
 
