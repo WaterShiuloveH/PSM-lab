@@ -33,23 +33,23 @@ class ApiServerTest(TestCase):
         history = [build_snapshot(1), build_snapshot(2), build_snapshot(3)]
         health_status, health_payload = build_api_response(
             "/health",
-            latest_snapshot_provider=lambda: history[-1],
-            history_provider=lambda limit: history[-limit:],
+            latest_snapshot_provider=lambda **kwargs: history[-1],
+            history_provider=lambda **kwargs: history[-kwargs["limit"] :],
         )
         latest_status, latest_payload = build_api_response(
             "/api/latest",
-            latest_snapshot_provider=lambda: history[-1],
-            history_provider=lambda limit: history[-limit:],
+            latest_snapshot_provider=lambda **kwargs: history[-1],
+            history_provider=lambda **kwargs: history[-kwargs["limit"] :],
         )
         history_status, history_payload = build_api_response(
             "/api/history?limit=2",
-            latest_snapshot_provider=lambda: history[-1],
-            history_provider=lambda limit: history[-limit:],
+            latest_snapshot_provider=lambda **kwargs: history[-1],
+            history_provider=lambda **kwargs: history[-kwargs["limit"] :],
         )
         summary_status, summary_payload = build_api_response(
             "/api/summary?limit=2",
-            latest_snapshot_provider=lambda: history[-1],
-            history_provider=lambda limit: history[-limit:],
+            latest_snapshot_provider=lambda **kwargs: history[-1],
+            history_provider=lambda **kwargs: history[-kwargs["limit"] :],
         )
 
         self.assertEqual(health_status, HTTPStatus.OK)
@@ -66,8 +66,8 @@ class ApiServerTest(TestCase):
     def test_api_returns_not_found_for_unknown_path(self) -> None:
         status, payload = build_api_response(
             "/missing",
-            latest_snapshot_provider=lambda: None,
-            history_provider=lambda limit: [],
+            latest_snapshot_provider=lambda **kwargs: None,
+            history_provider=lambda **kwargs: [],
         )
 
         self.assertEqual(status, HTTPStatus.NOT_FOUND)
@@ -80,11 +80,39 @@ class ApiServerTest(TestCase):
 
         status, payload = build_api_response(
             "/api/alerts?limit=3",
-            latest_snapshot_provider=lambda: history[-1],
-            history_provider=lambda limit: history[-limit:],
+            latest_snapshot_provider=lambda **kwargs: history[-1],
+            history_provider=lambda **kwargs: history[-kwargs["limit"] :],
         )
 
         self.assertEqual(status, HTTPStatus.OK)
         self.assertEqual(len(payload["alerts"]), 2)
         self.assertEqual(payload["alerts"][0]["message"], "High CPU usage: 95.0%")
         self.assertEqual(payload["alerts"][1]["message"], "High memory usage: 90.0%")
+
+    def test_api_supports_since_and_before_filters(self) -> None:
+        history = [build_snapshot(1), build_snapshot(2), build_snapshot(3)]
+
+        def latest_provider(**kwargs):
+            filtered = history_provider(**kwargs)
+            return filtered[-1] if filtered else None
+
+        def history_provider(**kwargs):
+            snapshots = history
+            since = kwargs.get("since")
+            before = kwargs.get("before")
+            if since is not None:
+                snapshots = [snapshot for snapshot in snapshots if snapshot.timestamp.isoformat() >= since]
+            if before is not None:
+                snapshots = [snapshot for snapshot in snapshots if snapshot.timestamp.isoformat() <= before]
+            return snapshots[-kwargs["limit"] :]
+
+        status, payload = build_api_response(
+            "/api/history?limit=5&since=2026-04-04T22:40:02&before=2026-04-04T22:40:03",
+            latest_snapshot_provider=latest_provider,
+            history_provider=history_provider,
+        )
+
+        self.assertEqual(status, HTTPStatus.OK)
+        self.assertEqual(len(payload["snapshots"]), 2)
+        self.assertEqual(payload["snapshots"][0]["timestamp"], "2026-04-04T22:40:02")
+        self.assertEqual(payload["snapshots"][1]["timestamp"], "2026-04-04T22:40:03")

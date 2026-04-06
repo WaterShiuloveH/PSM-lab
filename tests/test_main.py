@@ -133,7 +133,10 @@ class MainRuntimeTest(TestCase):
         )
         mock_create_api_server.assert_called_once()
         self.assertEqual(mock_create_api_server.call_args.kwargs["latest_snapshot_provider"](), None)
-        self.assertEqual(mock_create_api_server.call_args.kwargs["history_provider"](5), [])
+        self.assertEqual(
+            mock_create_api_server.call_args.kwargs["history_provider"](limit=5),
+            [],
+        )
         api_handle.start.assert_called_once()
         api_handle.close.assert_called_once()
         exporter.write.assert_called_once_with(sampler.sample.return_value)

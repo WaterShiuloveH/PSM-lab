@@ -175,11 +175,15 @@ def initialize_sqlite_schema(connection: sqlite3.Connection) -> None:
     connection.commit()
 
 
-def load_sqlite_history(path: str, limit: int) -> list[SystemSnapshot]:
+def load_sqlite_history(
+    path: str,
+    limit: int,
+    since: str | None = None,
+    before: str | None = None,
+) -> list[SystemSnapshot]:
     connection = sqlite3.connect(path)
     try:
-        rows = connection.execute(
-            """
+        query = """
             SELECT
                 timestamp,
                 cpu_percent,
@@ -196,11 +200,20 @@ def load_sqlite_history(path: str, limit: int) -> list[SystemSnapshot]:
                 gpu_info,
                 top_processes
             FROM snapshots
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
+        """
+        conditions: list[str] = []
+        params: list[object] = []
+        if since is not None:
+            conditions.append("timestamp >= ?")
+            params.append(since)
+        if before is not None:
+            conditions.append("timestamp <= ?")
+            params.append(before)
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        query += " ORDER BY id DESC LIMIT ?"
+        params.append(limit)
+        rows = connection.execute(query, tuple(params)).fetchall()
     finally:
         connection.close()
 
@@ -208,11 +221,14 @@ def load_sqlite_history(path: str, limit: int) -> list[SystemSnapshot]:
     return snapshots
 
 
-def load_sqlite_latest(path: str) -> SystemSnapshot | None:
+def load_sqlite_latest(
+    path: str,
+    since: str | None = None,
+    before: str | None = None,
+) -> SystemSnapshot | None:
     connection = sqlite3.connect(path)
     try:
-        row = connection.execute(
-            """
+        query = """
             SELECT
                 timestamp,
                 cpu_percent,
@@ -229,10 +245,19 @@ def load_sqlite_latest(path: str) -> SystemSnapshot | None:
                 gpu_info,
                 top_processes
             FROM snapshots
-            ORDER BY id DESC
-            LIMIT 1
-            """
-        ).fetchone()
+        """
+        conditions: list[str] = []
+        params: list[object] = []
+        if since is not None:
+            conditions.append("timestamp >= ?")
+            params.append(since)
+        if before is not None:
+            conditions.append("timestamp <= ?")
+            params.append(before)
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        query += " ORDER BY id DESC LIMIT 1"
+        row = connection.execute(query, tuple(params)).fetchone()
     finally:
         connection.close()
 

@@ -87,6 +87,8 @@ curl http://127.0.0.1:8000/api/latest
 curl "http://127.0.0.1:8000/api/history?limit=5"
 curl "http://127.0.0.1:8000/api/summary?limit=10"
 curl "http://127.0.0.1:8000/api/alerts?limit=20"
+curl "http://127.0.0.1:8000/api/history?limit=5&since=2026-04-07T18:00:00"
+curl "http://127.0.0.1:8000/api/summary?limit=10&before=2026-04-07T19:00:00"
 ```
 
 ## API Endpoints
@@ -95,12 +97,20 @@ curl "http://127.0.0.1:8000/api/alerts?limit=20"
   - returns a simple health response
 - `GET /api/latest`
   - returns the latest sampled snapshot
+- `GET /api/latest?since=...&before=...`
+  - optionally filters the latest result to a time window
 - `GET /api/history?limit=5`
   - returns the most recent snapshots up to the requested limit
+- `GET /api/history?limit=5&since=...&before=...`
+  - optionally filters history to a timestamp range using ISO-style timestamps
 - `GET /api/summary?limit=10`
   - returns recent averages and the latest sampled snapshot
+- `GET /api/summary?limit=10&since=...&before=...`
+  - optionally summarizes only snapshots inside the requested time window
 - `GET /api/alerts?limit=20`
   - returns recent alert messages from sampled history
+- `GET /api/alerts?limit=20&since=...&before=...`
+  - optionally returns alerts only from the requested time window
 
 ## Test
 
@@ -137,6 +147,11 @@ The monitor is structured in layers:
 - alerts evaluate thresholds
 - UI renders a terminal dashboard
 - `main.py` wires configuration and runtime behavior together
+
+For API history reads:
+
+- memory-backed mode serves recent in-process snapshots
+- SQLite-backed mode can serve persisted history that survives process restarts
 
 The sampler treats collectors by cost:
 

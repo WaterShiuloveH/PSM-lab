@@ -45,35 +45,33 @@ def build_api_response(
     history_provider,
 ) -> tuple[HTTPStatus, dict[str, object]]:
     parsed = urlparse(path)
+    params = parse_qs(parsed.query)
+    limit = _parse_limit(params.get("limit", ["10"])[0], default=10)
+    since = params.get("since", [None])[0]
+    before = params.get("before", [None])[0]
 
     if parsed.path == "/health":
         return HTTPStatus.OK, {"status": "ok"}
 
     if parsed.path == "/api/latest":
-        snapshot = latest_snapshot_provider()
+        snapshot = latest_snapshot_provider(since=since, before=before)
         if snapshot is None:
             return HTTPStatus.OK, {"snapshot": None}
         return HTTPStatus.OK, {"snapshot": snapshot_to_record(snapshot)}
 
     if parsed.path == "/api/history":
-        params = parse_qs(parsed.query)
-        limit = _parse_limit(params.get("limit", ["10"])[0], default=10)
-        history = history_provider(limit)
+        history = history_provider(limit=limit, since=since, before=before)
         return HTTPStatus.OK, {
             "snapshots": [snapshot_to_record(snapshot) for snapshot in history]
         }
 
     if parsed.path == "/api/summary":
-        params = parse_qs(parsed.query)
-        limit = _parse_limit(params.get("limit", ["10"])[0], default=10)
-        history = history_provider(limit)
-        latest = latest_snapshot_provider()
+        history = history_provider(limit=limit, since=since, before=before)
+        latest = latest_snapshot_provider(since=since, before=before)
         return HTTPStatus.OK, {"summary": build_summary_payload(history, latest)}
 
     if parsed.path == "/api/alerts":
-        params = parse_qs(parsed.query)
-        limit = _parse_limit(params.get("limit", ["10"])[0], default=10)
-        history = history_provider(limit)
+        history = history_provider(limit=limit, since=since, before=before)
         return HTTPStatus.OK, {"alerts": build_alerts_payload(history)}
 
     return HTTPStatus.NOT_FOUND, {"error": "not_found"}

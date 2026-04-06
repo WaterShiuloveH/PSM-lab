@@ -75,13 +75,35 @@ def main(argv: list[str] | None = None) -> None:
     )
     exporter = create_exporter(args.export_file, args.export_format)
     api_handle = None
+
+    def memory_latest_snapshot_provider(*, since=None, before=None):
+        history = memory_history_provider(limit=len(sampler.history), since=since, before=before)
+        return history[-1] if history else None
+
+    def memory_history_provider(*, limit: int, since=None, before=None):
+        history = list(sampler.history)
+        if since is not None:
+            history = [snapshot for snapshot in history if snapshot.timestamp.isoformat() >= since]
+        if before is not None:
+            history = [snapshot for snapshot in history if snapshot.timestamp.isoformat() <= before]
+        return history[-limit:]
+
     if args.http_port:
         if args.export_format == "sqlite" and args.export_file:
-            latest_snapshot_provider = lambda: load_sqlite_latest(args.export_file)
-            history_provider = lambda limit: load_sqlite_history(args.export_file, limit)
+            latest_snapshot_provider = lambda *, since=None, before=None: load_sqlite_latest(
+                args.export_file,
+                since=since,
+                before=before,
+            )
+            history_provider = lambda *, limit, since=None, before=None: load_sqlite_history(
+                args.export_file,
+                limit,
+                since=since,
+                before=before,
+            )
         else:
-            latest_snapshot_provider = lambda: sampler.history[-1] if sampler.history else None
-            history_provider = lambda limit: list(sampler.history)[-limit:]
+            latest_snapshot_provider = memory_latest_snapshot_provider
+            history_provider = memory_history_provider
         api_server = create_api_server(
             args.http_host,
             args.http_port,

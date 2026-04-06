@@ -104,3 +104,37 @@ class ExporterTest(TestCase):
             self.assertEqual(len(history), 2)
             self.assertEqual(history[0].cpu_percent, 10.0)
             self.assertEqual(history[1].cpu_percent, 20.0)
+
+    def test_sqlite_loader_supports_since_and_before_filters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "monitor.db"
+            exporter = SqliteSnapshotExporter(str(output))
+            first = build_snapshot()
+            second = build_snapshot()
+            third = build_snapshot()
+            second.timestamp = datetime(2026, 4, 2, 19, 31, 0)
+            second.cpu_percent = 20.0
+            third.timestamp = datetime(2026, 4, 2, 19, 32, 0)
+            third.cpu_percent = 30.0
+            exporter.write(first)
+            exporter.write(second)
+            exporter.write(third)
+            exporter.close()
+
+            history = load_sqlite_history(
+                str(output),
+                limit=5,
+                since="2026-04-02T19:31:00",
+                before="2026-04-02T19:32:00",
+            )
+            latest = load_sqlite_latest(
+                str(output),
+                since="2026-04-02T19:31:00",
+                before="2026-04-02T19:32:00",
+            )
+
+            self.assertEqual(len(history), 2)
+            self.assertEqual(history[0].cpu_percent, 20.0)
+            self.assertEqual(history[1].cpu_percent, 30.0)
+            self.assertIsNotNone(latest)
+            self.assertEqual(latest.cpu_percent, 30.0)
