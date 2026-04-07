@@ -83,8 +83,9 @@ class CsvSnapshotExporter(SnapshotExporter):
 
 
 class SqliteSnapshotExporter(SnapshotExporter):
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str, retention_max_rows: int | None = None) -> None:
         self.path = path
+        self.retention_max_rows = retention_max_rows
         self._connection = sqlite3.connect(path)
         initialize_sqlite_schema(self._connection)
 
@@ -126,13 +127,19 @@ class SqliteSnapshotExporter(SnapshotExporter):
                 json.dumps(record["top_processes"]),
             ),
         )
+        if self.retention_max_rows is not None:
+            prune_sqlite_rows(self._connection, self.retention_max_rows)
         self._connection.commit()
 
     def close(self) -> None:
         self._connection.close()
 
 
-def create_exporter(path: str | None, export_format: str) -> SnapshotExporter | None:
+def create_exporter(
+    path: str | None,
+    export_format: str,
+    retention_max_rows: int | None = None,
+) -> SnapshotExporter | None:
     if not path:
         return None
     if export_format == "json":
@@ -140,7 +147,7 @@ def create_exporter(path: str | None, export_format: str) -> SnapshotExporter | 
     if export_format == "csv":
         return CsvSnapshotExporter(path)
     if export_format == "sqlite":
-        return SqliteSnapshotExporter(path)
+        return SqliteSnapshotExporter(path, retention_max_rows=retention_max_rows)
     raise ValueError(f"Unsupported export format: {export_format}")
 
 
@@ -173,6 +180,22 @@ def initialize_sqlite_schema(connection: sqlite3.Connection) -> None:
         """
     )
     connection.commit()
+
+
+def prune_sqlite_rows(connection: sqlite3.Connection, max_rows: int) -> None:
+    if max_rows <= 0:
+        return
+    connection.execute(
+        """
+        DELETE FROM snapshots
+        WHERE id NOT IN (
+            SELECT id FROM snapshots
+            ORDER BY id DESC
+            LIMIT ?
+        )
+        """,
+        (max_rows,),
+    )
 
 
 def load_sqlite_history(

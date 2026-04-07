@@ -56,6 +56,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="json",
         help="Export format when --export-file is set",
     )
+    parser.add_argument(
+        "--sqlite-retention-max-rows",
+        type=int,
+        default=None,
+        help="Optional maximum number of SQLite snapshot rows to keep",
+    )
     return parser.parse_args(argv)
 
 
@@ -73,7 +79,11 @@ def main(argv: list[str] | None = None) -> None:
         process_refresh_interval=args.process_refresh_interval,
         gpu_refresh_interval=args.gpu_refresh_interval,
     )
-    exporter = create_exporter(args.export_file, args.export_format)
+    exporter = create_exporter(
+        args.export_file,
+        args.export_format,
+        retention_max_rows=args.sqlite_retention_max_rows,
+    )
     api_handle = None
 
     def memory_latest_snapshot_provider(*, since=None, before=None):

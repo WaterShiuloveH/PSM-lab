@@ -26,6 +26,7 @@ class MainArgsTest(TestCase):
         self.assertEqual(args.http_port, 0)
         self.assertIsNone(args.export_file)
         self.assertEqual(args.export_format, "json")
+        self.assertIsNone(args.sqlite_retention_max_rows)
 
     def test_parse_args_accepts_custom_values(self) -> None:
         args = parse_args(
@@ -56,6 +57,8 @@ class MainArgsTest(TestCase):
                 "snapshots.db",
                 "--export-format",
                 "sqlite",
+                "--sqlite-retention-max-rows",
+                "500",
             ]
         )
 
@@ -72,6 +75,7 @@ class MainArgsTest(TestCase):
         self.assertEqual(args.http_port, 8000)
         self.assertEqual(args.export_file, "snapshots.db")
         self.assertEqual(args.export_format, "sqlite")
+        self.assertEqual(args.sqlite_retention_max_rows, 500)
 
 
 class MainRuntimeTest(TestCase):
@@ -112,6 +116,7 @@ class MainRuntimeTest(TestCase):
             http_port=8000,
             export_file="out.db",
             export_format="sqlite",
+            sqlite_retention_max_rows=250,
         )
         sampler = Mock()
         sampler.sample.return_value = Mock()
@@ -132,6 +137,11 @@ class MainRuntimeTest(TestCase):
             trends={"cpu": ".-#"},
         )
         mock_create_api_server.assert_called_once()
+        mock_create_exporter.assert_called_once_with(
+            "out.db",
+            "sqlite",
+            retention_max_rows=250,
+        )
         self.assertEqual(mock_create_api_server.call_args.kwargs["latest_snapshot_provider"](), None)
         self.assertEqual(
             mock_create_api_server.call_args.kwargs["history_provider"](limit=5),

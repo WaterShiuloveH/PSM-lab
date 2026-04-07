@@ -66,6 +66,16 @@ class ExporterTest(TestCase):
     def test_create_exporter_returns_none_without_path(self) -> None:
         self.assertIsNone(create_exporter(None, "json"))
 
+    def test_create_exporter_passes_sqlite_retention(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "monitor.db"
+            exporter = create_exporter(str(output), "sqlite", retention_max_rows=10)
+
+            self.assertIsInstance(exporter, SqliteSnapshotExporter)
+            assert exporter is not None
+            self.assertEqual(exporter.retention_max_rows, 10)
+            exporter.close()
+
     def test_sqlite_exporter_inserts_snapshot_row(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             output = Path(tmpdir) / "monitor.db"
@@ -138,3 +148,25 @@ class ExporterTest(TestCase):
             self.assertEqual(history[1].cpu_percent, 30.0)
             self.assertIsNotNone(latest)
             self.assertEqual(latest.cpu_percent, 30.0)
+
+    def test_sqlite_exporter_prunes_old_rows_when_retention_is_set(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "monitor.db"
+            exporter = SqliteSnapshotExporter(str(output), retention_max_rows=2)
+            first = build_snapshot()
+            second = build_snapshot()
+            third = build_snapshot()
+            second.timestamp = datetime(2026, 4, 2, 19, 31, 0)
+            second.cpu_percent = 20.0
+            third.timestamp = datetime(2026, 4, 2, 19, 32, 0)
+            third.cpu_percent = 30.0
+            exporter.write(first)
+            exporter.write(second)
+            exporter.write(third)
+            exporter.close()
+
+            history = load_sqlite_history(str(output), 10)
+
+            self.assertEqual(len(history), 2)
+            self.assertEqual(history[0].cpu_percent, 20.0)
+            self.assertEqual(history[1].cpu_percent, 30.0)

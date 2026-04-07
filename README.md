@@ -19,6 +19,7 @@ It can be used in two ways:
 - configurable CLI flags for refresh and alert thresholds
 - lower-overhead sampling with cached slow collectors
 - optional snapshot export to JSON, CSV, or SQLite
+- optional SQLite retention to cap local database growth
 - optional HTTP API for latest snapshot, recent history, summaries, and alerts
 
 ## Run
@@ -54,6 +55,7 @@ Run with export enabled:
 python3 main.py --export-file snapshots.jsonl --export-format json
 python3 main.py --export-file snapshots.csv --export-format csv
 python3 main.py --export-file snapshots.db --export-format sqlite
+python3 main.py --export-file snapshots.db --export-format sqlite --sqlite-retention-max-rows 500
 ```
 
 Run with custom alert behavior:
@@ -126,6 +128,7 @@ make export-csv
 make export-sqlite
 make api
 make api-sqlite
+make api-sqlite-retained
 make test-alerts
 ```
 
@@ -152,6 +155,11 @@ For API history reads:
 
 - memory-backed mode serves recent in-process snapshots
 - SQLite-backed mode can serve persisted history that survives process restarts
+
+For SQLite storage growth:
+
+- `--sqlite-retention-max-rows` keeps only the newest N persisted snapshots
+- older rows are pruned automatically after new SQLite writes
 
 The sampler treats collectors by cost:
 

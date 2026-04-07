@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: test smoke run compile export-json export-csv export-sqlite api api-sqlite test-alerts
+.PHONY: test smoke run compile export-json export-csv export-sqlite api api-sqlite api-sqlite-retained test-alerts
 
 test:
 	$(PYTHON) -m unittest discover -s tests -v
@@ -28,6 +28,9 @@ api:
 
 api-sqlite:
 	$(PYTHON) main.py --export-file snapshots.db --export-format sqlite --http-port 8000
+
+api-sqlite-retained:
+	$(PYTHON) main.py --export-file snapshots.db --export-format sqlite --sqlite-retention-max-rows 500 --http-port 8000
 
 test-alerts:
 	$(PYTHON) main.py --cpu-threshold 1 --memory-threshold 1 --disk-threshold 1 --alert-sustain-samples 2 --alert-cooldown-seconds 5
