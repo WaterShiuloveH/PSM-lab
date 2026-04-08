@@ -20,7 +20,7 @@ It can be used in two ways:
 - lower-overhead sampling with cached slow collectors
 - optional snapshot export to JSON, CSV, or SQLite
 - optional SQLite retention to cap local database growth
-- optional HTTP API for latest snapshot, recent history, summaries, and alerts
+- optional HTTP API for latest snapshot, recent history, summaries, alerts, and storage metadata
 
 ## Run
 
@@ -109,6 +109,7 @@ curl "http://127.0.0.1:8000/api/summary?limit=10&before=2026-04-07T19:00:00"
   - returns recent averages and the latest sampled snapshot
 - `GET /api/summary?limit=10&since=...&before=...`
   - optionally summarizes only snapshots inside the requested time window
+  - includes storage metadata such as backend, row count, retention setting, and memory history size
 - `GET /api/alerts?limit=20`
   - returns recent alert messages from sampled history
 - `GET /api/alerts?limit=20&since=...&before=...`
@@ -155,6 +156,7 @@ For API history reads:
 
 - memory-backed mode serves recent in-process snapshots
 - SQLite-backed mode can serve persisted history that survives process restarts
+- `/api/summary` includes storage metadata so the monitor can report its own backend and retention state
 
 For SQLite storage growth:
 

@@ -14,6 +14,7 @@ from monitor.exporters import (
     create_exporter,
     load_sqlite_history,
     load_sqlite_latest,
+    load_sqlite_row_count,
 )
 from monitor.models import GpuInfo, ProcessInfo, SystemSnapshot
 
@@ -148,6 +149,16 @@ class ExporterTest(TestCase):
             self.assertEqual(history[1].cpu_percent, 30.0)
             self.assertIsNotNone(latest)
             self.assertEqual(latest.cpu_percent, 30.0)
+
+    def test_sqlite_row_count_reports_persisted_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "monitor.db"
+            exporter = SqliteSnapshotExporter(str(output))
+            exporter.write(build_snapshot())
+            exporter.write(build_snapshot())
+            exporter.close()
+
+            self.assertEqual(load_sqlite_row_count(str(output)), 2)
 
     def test_sqlite_exporter_prunes_old_rows_when_retention_is_set(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

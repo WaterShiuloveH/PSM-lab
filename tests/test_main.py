@@ -87,12 +87,14 @@ class MainRuntimeTest(TestCase):
     @patch("main.create_exporter")
     @patch("main.load_sqlite_history")
     @patch("main.load_sqlite_latest")
+    @patch("main.load_sqlite_row_count")
     @patch("main.SystemSampler")
     @patch("main.parse_args")
     def test_main_uses_sampler_trends_when_rendering(
         self,
         mock_parse_args,
         mock_system_sampler,
+        mock_load_sqlite_row_count,
         mock_load_sqlite_latest,
         mock_load_sqlite_history,
         mock_create_exporter,
@@ -121,11 +123,13 @@ class MainRuntimeTest(TestCase):
         sampler = Mock()
         sampler.sample.return_value = Mock()
         sampler.summarize_recent_trends.return_value = {"cpu": ".-#"}
+        sampler.history = [Mock(), Mock()]
         mock_system_sampler.return_value = sampler
         exporter = Mock()
         mock_create_exporter.return_value = exporter
         api_handle = Mock()
         mock_api_server_handle.return_value = api_handle
+        mock_load_sqlite_row_count.return_value = 7
         mock_load_sqlite_latest.return_value = None
         mock_load_sqlite_history.return_value = []
 
@@ -146,6 +150,14 @@ class MainRuntimeTest(TestCase):
         self.assertEqual(
             mock_create_api_server.call_args.kwargs["history_provider"](limit=5),
             [],
+        )
+        self.assertEqual(
+            mock_create_api_server.call_args.kwargs["storage_metadata_provider"]()["row_count"],
+            7,
+        )
+        self.assertEqual(
+            mock_create_api_server.call_args.kwargs["storage_metadata_provider"]()["memory_history_size"],
+            2,
         )
         api_handle.start.assert_called_once()
         api_handle.close.assert_called_once()

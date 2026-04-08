@@ -50,6 +50,7 @@ class ApiServerTest(TestCase):
             "/api/summary?limit=2",
             latest_snapshot_provider=lambda **kwargs: history[-1],
             history_provider=lambda **kwargs: history[-kwargs["limit"] :],
+            storage_metadata_provider=lambda: {"backend": "memory", "memory_history_size": 3},
         )
 
         self.assertEqual(health_status, HTTPStatus.OK)
@@ -62,6 +63,7 @@ class ApiServerTest(TestCase):
         self.assertEqual(summary_status, HTTPStatus.OK)
         self.assertEqual(summary_payload["summary"]["samples"], 2)
         self.assertEqual(summary_payload["summary"]["latest"]["timestamp"], "2026-04-04T22:40:03")
+        self.assertEqual(summary_payload["summary"]["storage"]["backend"], "memory")
 
     def test_api_returns_not_found_for_unknown_path(self) -> None:
         status, payload = build_api_response(
@@ -116,3 +118,24 @@ class ApiServerTest(TestCase):
         self.assertEqual(len(payload["snapshots"]), 2)
         self.assertEqual(payload["snapshots"][0]["timestamp"], "2026-04-04T22:40:02")
         self.assertEqual(payload["snapshots"][1]["timestamp"], "2026-04-04T22:40:03")
+
+    def test_summary_includes_storage_metadata_when_available(self) -> None:
+        history = [build_snapshot(1), build_snapshot(2)]
+
+        status, payload = build_api_response(
+            "/api/summary?limit=2",
+            latest_snapshot_provider=lambda **kwargs: history[-1],
+            history_provider=lambda **kwargs: history[-kwargs["limit"] :],
+            storage_metadata_provider=lambda: {
+                "backend": "sqlite",
+                "path": "snapshots.db",
+                "row_count": 42,
+                "retention_max_rows": 500,
+                "memory_history_size": 2,
+            },
+        )
+
+        self.assertEqual(status, HTTPStatus.OK)
+        self.assertEqual(payload["summary"]["storage"]["backend"], "sqlite")
+        self.assertEqual(payload["summary"]["storage"]["row_count"], 42)
+        self.assertEqual(payload["summary"]["storage"]["retention_max_rows"], 500)

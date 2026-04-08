@@ -7,7 +7,12 @@ import time
 
 from monitor.api import ApiServerHandle, create_api_server
 from monitor.alerts import AlertEvaluator
-from monitor.exporters import create_exporter, load_sqlite_history, load_sqlite_latest
+from monitor.exporters import (
+    create_exporter,
+    load_sqlite_history,
+    load_sqlite_latest,
+    load_sqlite_row_count,
+)
 from monitor.sampler import SystemSampler
 from monitor.ui import render_snapshot
 
@@ -111,14 +116,29 @@ def main(argv: list[str] | None = None) -> None:
                 since=since,
                 before=before,
             )
+            storage_metadata_provider = lambda: {
+                "backend": "sqlite",
+                "path": args.export_file,
+                "row_count": load_sqlite_row_count(args.export_file),
+                "retention_max_rows": args.sqlite_retention_max_rows,
+                "memory_history_size": len(sampler.history),
+            }
         else:
             latest_snapshot_provider = memory_latest_snapshot_provider
             history_provider = memory_history_provider
+            storage_metadata_provider = lambda: {
+                "backend": "memory",
+                "path": args.export_file,
+                "row_count": None,
+                "retention_max_rows": None,
+                "memory_history_size": len(sampler.history),
+            }
         api_server = create_api_server(
             args.http_host,
             args.http_port,
             latest_snapshot_provider=latest_snapshot_provider,
             history_provider=history_provider,
+            storage_metadata_provider=storage_metadata_provider,
         )
         api_handle = ApiServerHandle(api_server)
         api_handle.start()

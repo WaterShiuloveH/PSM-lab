@@ -15,6 +15,7 @@ def create_api_server(
     port: int,
     latest_snapshot_provider,
     history_provider,
+    storage_metadata_provider=None,
 ) -> ThreadingHTTPServer:
     class MonitorRequestHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -22,6 +23,7 @@ def create_api_server(
                 self.path,
                 latest_snapshot_provider=latest_snapshot_provider,
                 history_provider=history_provider,
+                storage_metadata_provider=storage_metadata_provider,
             )
             self._write_json(payload, status=status)
 
@@ -43,6 +45,7 @@ def build_api_response(
     path: str,
     latest_snapshot_provider,
     history_provider,
+    storage_metadata_provider=None,
 ) -> tuple[HTTPStatus, dict[str, object]]:
     parsed = urlparse(path)
     params = parse_qs(parsed.query)
@@ -68,7 +71,10 @@ def build_api_response(
     if parsed.path == "/api/summary":
         history = history_provider(limit=limit, since=since, before=before)
         latest = latest_snapshot_provider(since=since, before=before)
-        return HTTPStatus.OK, {"summary": build_summary_payload(history, latest)}
+        metadata = {}
+        if storage_metadata_provider is not None:
+            metadata = storage_metadata_provider()
+        return HTTPStatus.OK, {"summary": build_summary_payload(history, latest, metadata)}
 
     if parsed.path == "/api/alerts":
         history = history_provider(limit=limit, since=since, before=before)
@@ -101,6 +107,7 @@ def _parse_limit(value: str, default: int) -> int:
 def build_summary_payload(
     history: list[SystemSnapshot],
     latest: SystemSnapshot | None,
+    storage: dict[str, object] | None = None,
 ) -> dict[str, object]:
     if not history:
         return {
@@ -110,6 +117,7 @@ def build_summary_payload(
             "avg_memory_percent": 0.0,
             "avg_net_up": 0.0,
             "avg_net_down": 0.0,
+            "storage": storage or {},
         }
 
     return {
@@ -119,6 +127,7 @@ def build_summary_payload(
         "avg_memory_percent": _average([snapshot.memory_percent for snapshot in history]),
         "avg_net_up": _average([snapshot.net_sent_rate_smoothed for snapshot in history]),
         "avg_net_down": _average([snapshot.net_recv_rate_smoothed for snapshot in history]),
+        "storage": storage or {},
     }
 
 

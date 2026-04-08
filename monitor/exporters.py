@@ -289,6 +289,15 @@ def load_sqlite_latest(
     return _snapshot_from_sqlite_row(row)
 
 
+def load_sqlite_row_count(path: str) -> int:
+    connection = sqlite3.connect(path)
+    try:
+        row = connection.execute("SELECT COUNT(*) FROM snapshots").fetchone()
+    finally:
+        connection.close()
+    return int(row[0]) if row is not None else 0
+
+
 def _snapshot_from_sqlite_row(row: tuple[object, ...]) -> SystemSnapshot:
     timestamp = datetime.fromisoformat(str(row[0]))
     per_cpu_percent = [float(value) for value in json.loads(str(row[2]))]
